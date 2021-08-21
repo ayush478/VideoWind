@@ -19,7 +19,7 @@ This is a video calling application where users can call other user.
 - Share code instantly on social media platforms
 - Simple and intuitive UI
 
-## Screenshots 📸
+<!-- ## Screenshots 📸
 
 ### Home Page
 
@@ -37,7 +37,7 @@ This is a video calling application where users can call other user.
 
 ![enter image description here](https://user-images.githubusercontent.com/48746544/115702929-24e79000-a387-11eb-906c-704608263da4.png)
 
-![enter image description here](https://user-images.githubusercontent.com/48746544/115703177-709a3980-a387-11eb-8d9d-15ddf3b66a25.png)
+![enter image description here](https://user-images.githubusercontent.com/48746544/115703177-709a3980-a387-11eb-8d9d-15ddf3b66a25.png) -->
 
 ## Tech Stack 💻
 
