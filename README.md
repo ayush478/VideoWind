@@ -1,4 +1,4 @@
-# Welcome to Mihir's Video Chat App ✨
+# Welcome to Ayush's Video Chat App ✨
 
 
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](https://ayush-video-chat-app.netlify.app/)&nbsp;[![Build passing](https://img.shields.io/badge/Build-Passing-brightgreen.svg?style=flat-square)]( https://ayush-video-chat-app.netlify.app/)&nbsp;[![Open Source Love](https://badges.frapsoft.com/os/v1/open-source.svg?v=102)](https://ayush-video-chat-app.netlify.app/)&nbsp;![Made with Love in India](https://madewithlove.org.in/badge.svg)
