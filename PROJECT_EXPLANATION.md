@@ -6,19 +6,860 @@
 
 ## 📋 Table of Contents
 
-1. [Project Overview](#1-project-overview)
-2. [System Architecture & Design](#2-system-architecture--design)
-3. [Technology Stack Deep Dive](#3-technology-stack-deep-dive)
-4. [Component Interactions & Data Flow](#4-component-interactions--data-flow)
-5. [Backend Responsibilities](#5-backend-responsibilities)
-6. [Frontend Responsibilities](#6-frontend-responsibilities)
-7. [WebRTC Signaling Process](#7-webrtc-signaling-process)
-8. [State Management](#8-state-management)
-9. [Code Walkthrough](#9-code-walkthrough)
-10. [Scalability Considerations](#10-scalability-considerations)
-11. [Trade-offs & Design Decisions](#11-trade-offs--design-decisions)
-12. [Interview Q&A](#12-interview-qa)
-13. [Project File Structure](#13-project-file-structure)
+1. [Technology Fundamentals (Core Concepts)](#-technology-fundamentals-core-concepts)
+2. [Project Overview](#1-project-overview)
+3. [System Architecture & Design](#2-system-architecture--design)
+4. [Technology Stack Deep Dive](#3-technology-stack-deep-dive)
+5. [Component Interactions & Data Flow](#4-component-interactions--data-flow)
+6. [Backend Responsibilities](#5-backend-responsibilities)
+7. [Frontend Responsibilities](#6-frontend-responsibilities)
+8. [WebRTC Signaling Process](#7-webrtc-signaling-process)
+9. [State Management](#8-state-management)
+10. [Code Walkthrough](#9-code-walkthrough)
+11. [Scalability Considerations](#10-scalability-considerations)
+12. [Trade-offs & Design Decisions](#11-trade-offs--design-decisions)
+13. [Interview Q&A](#12-interview-qa)
+14. [Project File Structure](#13-project-file-structure)
+
+
+---
+
+## 🔰 Technology Fundamentals (Core Concepts)
+
+Before diving into the project, let's understand the **core concepts** of each technology used. This section is essential for interview preparation.
+
+---
+
+### 📘 React.js - Core Concepts
+
+React is a **JavaScript library for building user interfaces**, developed by Facebook.
+
+#### What is React?
+
+```
+React = Component-Based UI Library + Virtual DOM + Declarative Programming
+```
+
+#### Core Concept 1: Components
+
+Components are **reusable, self-contained pieces of UI**.
+
+```javascript
+// Functional Component (Modern - what we use)
+function VideoPlayer() {
+  return <video autoPlay />;
+}
+
+// Class Component (Legacy)
+class VideoPlayer extends React.Component {
+  render() {
+    return <video autoPlay />;
+  }
+}
+```
+
+**Types of Components in this project:**
+| Component | Type | Purpose |
+|-----------|------|---------|
+| `App.js` | Container | Layout, composition |
+| `VideoPlayer.jsx` | Presentational | Displays videos |
+| `Options.jsx` | Smart | Handles user input |
+| `Notifications.jsx` | Presentational | Shows alerts |
+
+#### Core Concept 2: JSX (JavaScript XML)
+
+JSX lets you write HTML-like syntax in JavaScript:
+
+```javascript
+// JSX (what you write)
+const element = <h1 className="title">Hello, {name}</h1>;
+
+// Compiles to (what browser sees)
+const element = React.createElement('h1', {className: 'title'}, 'Hello, ', name);
+```
+
+**JSX Rules:**
+- Use `className` instead of `class`
+- Use `htmlFor` instead of `for`
+- Self-close empty tags: `<img />`
+- One root element per return
+
+#### Core Concept 3: Props (Properties)
+
+Props pass data **from parent to child** (one-way data flow):
+
+```javascript
+// Parent passes props
+<Options>
+  <Notifications />   {/* children prop */}
+</Options>
+
+// Child receives props
+const Options = ({ children }) => {
+  return (
+    <Container>
+      {children}   {/* Renders Notifications here */}
+    </Container>
+  );
+};
+```
+
+#### Core Concept 4: State
+
+State is **component-local data that can change**:
+
+```javascript
+import { useState } from 'react';
+
+function Options() {
+  // Declare state variable with initial value
+  const [idToCall, setIdToCall] = useState("");
+  
+  // Update state (triggers re-render)
+  const handleChange = (e) => setIdToCall(e.target.value);
+  
+  return <input value={idToCall} onChange={handleChange} />;
+}
+```
+
+**State vs Props:**
+| Aspect | State | Props |
+|--------|-------|-------|
+| Owned by | Component itself | Parent component |
+| Mutable? | Yes (via setter) | No (read-only) |
+| Triggers re-render? | Yes | Yes |
+| Scope | Local | Passed down |
+
+#### Core Concept 5: Hooks
+
+Hooks let you use state and lifecycle in **functional components**:
+
+```javascript
+// useState - Local state
+const [name, setName] = useState('');
+
+// useEffect - Side effects (API calls, subscriptions)
+useEffect(() => {
+  // Runs after render
+  navigator.mediaDevices.getUserMedia(...)
+  
+  // Cleanup function (optional)
+  return () => socket.disconnect();
+}, []);  // Empty deps = run once on mount
+
+// useRef - Mutable reference that persists across renders
+const videoRef = useRef();
+videoRef.current.srcObject = stream;  // Direct DOM access
+
+// useContext - Access context value
+const { callUser } = useContext(SocketContext);
+```
+
+**Hooks used in this project:**
+| Hook | Where Used | Purpose |
+|------|------------|---------|
+| `useState` | SocketContext, Options | Manage call state, form inputs |
+| `useEffect` | SocketContext | Initialize media, socket listeners |
+| `useRef` | SocketContext | Video elements, peer connection |
+| `useContext` | All components | Access shared state |
+| `createContext` | SocketContext | Create context |
+
+#### Core Concept 6: Context API
+
+Context provides a way to **share values without prop drilling**:
+
+```javascript
+// 1. Create Context
+const SocketContext = createContext();
+
+// 2. Provide Context (wrap app)
+const ContextProvider = ({ children }) => {
+  const [name, setName] = useState('');
+  
+  return (
+    <SocketContext.Provider value={{ name, setName }}>
+      {children}
+    </SocketContext.Provider>
+  );
+};
+
+// 3. Consume Context (in any child)
+const SomeComponent = () => {
+  const { name, setName } = useContext(SocketContext);
+  return <input value={name} onChange={e => setName(e.target.value)} />;
+};
+```
+
+#### Core Concept 7: Virtual DOM
+
+React uses a Virtual DOM for **efficient updates**:
+
+```
+Real DOM (browser)          Virtual DOM (React)
+┌─────────────────┐         ┌─────────────────┐
+│ Slow to update  │         │ Fast JS object  │
+│ Direct mutation │         │ Diff algorithm  │
+│ Causes reflows  │         │ Batch updates   │
+└─────────────────┘         └─────────────────┘
+         ▲                           │
+         │                           │
+         └───── Minimal updates ─────┘
+```
+
+---
+
+### 📗 WebRTC - Core Concepts
+
+WebRTC (Web Real-Time Communication) enables **peer-to-peer audio/video/data** in browsers.
+
+#### What is WebRTC?
+
+```
+WebRTC = Browser API for P2P Media Communication
+       = No plugins + Encrypted + Low latency
+```
+
+#### Core Concept 1: Peer-to-Peer (P2P)
+
+Direct connection between browsers **without server relay**:
+
+```
+Traditional Video Call               WebRTC P2P
+(Server processes media)             (Direct connection)
+
+  User A                              User A
+    │                                   │
+    ▼                                   │
+ ┌──────┐                              │
+ │Server│ ← Bandwidth cost             │
+ └──────┘                              │
+    │                                   │
+    ▼                                   ▼
+  User B                              User B
+```
+
+**Benefits of P2P:**
+- Lower latency (no server hop)
+- No server bandwidth costs
+- Better privacy (E2E encrypted)
+- Scales without server capacity
+
+#### Core Concept 2: Signaling
+
+Peers **can't find each other directly**. Signaling helps them exchange:
+- SDP (Session Description Protocol) - media capabilities
+- ICE candidates - network paths
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     SIGNALING OVERVIEW                          │
+└─────────────────────────────────────────────────────────────────┘
+
+Peer A                    Signaling Server                   Peer B
+  │                             │                               │
+  │── "I want to call Peer B" ─►│                               │
+  │                             │── "Peer A wants to call" ────►│
+  │                             │                               │
+  │                             │◄── "I accept" ───────────────│
+  │◄── "Peer B accepts" ────────│                               │
+  │                             │                               │
+  │◄═══════════ Direct P2P Connection (no server) ═════════════►│
+```
+
+#### Core Concept 3: SDP (Session Description Protocol)
+
+SDP describes **what media a peer can send/receive**:
+
+```
+v=0                                    ← Protocol version
+o=- 12345 2 IN IP4 127.0.0.1          ← Origin (session ID)
+s=-                                    ← Session name
+t=0 0                                  ← Timing (0 0 = permanent)
+m=video 9 UDP/TLS/RTP/SAVPF 96        ← Media line (video, port 9)
+a=rtpmap:96 VP8/90000                  ← Codec (VP8 video)
+a=ice-ufrag:abcd                       ← ICE credentials
+a=ice-pwd:secretpassword               ← ICE password
+a=fingerprint:sha-256 AA:BB:CC...      ← DTLS fingerprint
+c=IN IP4 192.168.1.100                 ← Connection info
+a=candidate:1 1 UDP 2122260223...      ← ICE candidate
+```
+
+**SDP Exchange (Offer/Answer):**
+```
+Caller                                    Callee
+  │                                         │
+  │── SDP Offer ───────────────────────────►│
+  │   (My capabilities + candidates)        │
+  │                                         │
+  │◄── SDP Answer ─────────────────────────│
+  │   (Selected common capabilities)        │
+  │                                         │
+  ╔═══════════════════════════════════════╗
+  ║     Connection established!            ║
+  ╚═══════════════════════════════════════╝
+```
+
+#### Core Concept 4: ICE (Interactive Connectivity Establishment)
+
+ICE finds the **best network path** between peers:
+
+```
+ICE CANDIDATE TYPES
+═══════════════════
+
+1. HOST CANDIDATE (Best)
+   ┌────────────┐        ┌────────────┐
+   │   Peer A   │◄──────►│   Peer B   │
+   │192.168.1.10│ Direct │192.168.1.20│
+   └────────────┘        └────────────┘
+   → Same network, lowest latency
+
+2. SERVER REFLEXIVE - SRFLX (Common)
+   ┌────────────┐        ┌─────────┐        ┌────────────┐
+   │   Peer A   │───────►│  STUN   │◄───────│   Peer B   │
+   │ Behind NAT │        │ Server  │        │ Behind NAT │
+   └────────────┘        └─────────┘        └────────────┘
+   → Discovers public IP, connects through NAT
+
+3. RELAY (Last resort)
+   ┌────────────┐        ┌─────────┐        ┌────────────┐
+   │   Peer A   │───────►│  TURN   │◄───────│   Peer B   │
+   │Strict NAT  │ Relay  │ Server  │ Relay  │Strict NAT  │
+   └────────────┘        └─────────┘        └────────────┘
+   → All traffic through server (adds latency, costs)
+```
+
+#### Core Concept 5: STUN and TURN Servers
+
+| Server | Full Name | Purpose | Cost |
+|--------|-----------|---------|------|
+| **STUN** | Session Traversal Utilities for NAT | Discover public IP/port | Free (Google provides) |
+| **TURN** | Traversal Using Relays around NAT | Relay media when P2P fails | Expensive (bandwidth) |
+
+```javascript
+// ICE Server configuration (used by WebRTC)
+const iceServers = [
+  // Free STUN servers
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun1.l.google.com:19302' },
+  
+  // Paid TURN server (for ~5% of users behind strict NAT)
+  { 
+    urls: 'turn:turn.example.com:3478',
+    username: 'user',
+    credential: 'pass'
+  }
+];
+```
+
+#### Core Concept 6: MediaStream API
+
+Access user's **camera and microphone**:
+
+```javascript
+// Request access to media devices
+navigator.mediaDevices.getUserMedia({
+  video: true,           // or { width: 1280, height: 720 }
+  audio: true            // or { echoCancellation: true }
+})
+.then(stream => {
+  // stream is a MediaStream object
+  video.srcObject = stream;
+  
+  // Get individual tracks
+  const videoTrack = stream.getVideoTracks()[0];
+  const audioTrack = stream.getAudioTracks()[0];
+  
+  // Stop tracks when done
+  stream.getTracks().forEach(track => track.stop());
+})
+.catch(err => {
+  // Handle permission denied, no device, etc.
+});
+```
+
+---
+
+### 📙 Socket.io - Core Concepts
+
+Socket.io enables **real-time, bidirectional, event-based** communication.
+
+#### What is Socket.io?
+
+```
+Socket.io = WebSocket + Fallbacks + Features
+          = Real-time communication library
+```
+
+#### Socket.io vs WebSocket
+
+| Feature | WebSocket | Socket.io |
+|---------|-----------|-----------|
+| Protocol | Raw WS | WS + HTTP fallbacks |
+| Reconnection | Manual | Automatic |
+| Rooms | Manual | Built-in |
+| Events | Manual | Built-in |
+| Acknowledgments | No | Yes |
+| Binary support | Yes | Yes |
+
+#### Core Concept 1: Events
+
+Communication happens through **custom events**:
+
+```javascript
+// ═══════════════════════════════════════════
+// SERVER SIDE (Node.js)
+// ═══════════════════════════════════════════
+io.on('connection', (socket) => {
+  console.log('Client connected:', socket.id);
+  
+  // Emit to this client only
+  socket.emit('welcome', { msg: 'Hello!' });
+  
+  // Listen for events from this client
+  socket.on('callUser', (data) => {
+    // Route to specific user
+    io.to(data.userToCall).emit('incomingCall', data);
+  });
+  
+  // Broadcast to everyone except sender
+  socket.on('disconnect', () => {
+    socket.broadcast.emit('userLeft', socket.id);
+  });
+});
+
+// ═══════════════════════════════════════════
+// CLIENT SIDE (React)
+// ═══════════════════════════════════════════
+import { io } from 'socket.io-client';
+const socket = io('http://localhost:5000');
+
+// Listen for events
+socket.on('welcome', (data) => {
+  console.log(data.msg);  // "Hello!"
+});
+
+// Emit events
+socket.emit('callUser', { userToCall: 'abc123', from: 'xyz789' });
+```
+
+#### Core Concept 2: Emit Methods
+
+```javascript
+// To sender only
+socket.emit('event', data);
+
+// To everyone except sender
+socket.broadcast.emit('event', data);
+
+// To everyone (including sender)
+io.emit('event', data);
+
+// To specific socket ID
+io.to(socketId).emit('event', data);
+
+// To everyone in a room
+io.to('roomName').emit('event', data);
+```
+
+**Visual:**
+```
+                     ┌─────────────┐
+                     │   Server    │
+                     └──────┬──────┘
+                            │
+    ┌───────────────────────┼───────────────────────┐
+    │                       │                       │
+    ▼                       ▼                       ▼
+┌───────┐               ┌───────┐               ┌───────┐
+│Client1│               │Client2│               │Client3│
+└───────┘               └───────┘               └───────┘
+
+socket.emit()        → Client1 only
+socket.broadcast()   → Client2, Client3
+io.emit()            → Client1, Client2, Client3
+io.to(client2Id)     → Client2 only
+```
+
+#### Core Concept 3: Connection Lifecycle
+
+```javascript
+// Client connection states
+socket.on('connect', () => {
+  console.log('Connected!', socket.id);
+});
+
+socket.on('disconnect', (reason) => {
+  console.log('Disconnected:', reason);
+  // 'io server disconnect', 'ping timeout', 'transport close'
+});
+
+socket.on('connect_error', (error) => {
+  console.log('Connection error:', error.message);
+});
+
+// Manual disconnect/reconnect
+socket.disconnect();
+socket.connect();
+```
+
+#### Core Concept 4: Rooms (for future scaling)
+
+Not used in this project, but essential for group calls:
+
+```javascript
+// Server: Join a room
+socket.join('room-123');
+
+// Server: Leave a room
+socket.leave('room-123');
+
+// Server: Emit to room
+io.to('room-123').emit('message', data);
+
+// Server: Get socket's rooms
+console.log(socket.rooms);  // Set { 'socket-id', 'room-123' }
+```
+
+---
+
+### 📕 Node.js - Core Concepts
+
+Node.js is a **JavaScript runtime** built on Chrome's V8 engine.
+
+#### What is Node.js?
+
+```
+Node.js = JavaScript + Server-side capabilities
+        = V8 Engine + libuv (async I/O)
+```
+
+#### Core Concept 1: Event-Driven Architecture
+
+Node.js uses an **event loop** for non-blocking I/O:
+
+```
+┌───────────────────────────────────────────────────────────────┐
+│                         EVENT LOOP                            │
+└───────────────────────────────────────────────────────────────┘
+
+    ┌─────────────┐
+    │   Timers    │  ← setTimeout, setInterval
+    └──────┬──────┘
+           ▼
+    ┌─────────────┐
+    │  Pending    │  ← I/O callbacks
+    │  Callbacks  │
+    └──────┬──────┘
+           ▼
+    ┌─────────────┐
+    │    Idle,    │  ← Internal use
+    │   Prepare   │
+    └──────┬──────┘
+           ▼
+    ┌─────────────┐     ┌──────────────┐
+    │    Poll     │◄────│ Incoming     │
+    │             │     │ connections, │
+    └──────┬──────┘     │ data, etc.   │
+           ▼            └──────────────┘
+    ┌─────────────┐
+    │    Check    │  ← setImmediate
+    └──────┬──────┘
+           ▼
+    ┌─────────────┐
+    │   Close     │  ← socket.on('close')
+    │  Callbacks  │
+    └─────────────┘
+```
+
+#### Core Concept 2: Non-Blocking I/O
+
+```javascript
+// BLOCKING (Bad - stops everything)
+const data = fs.readFileSync('file.txt');  // Waits here
+console.log(data);
+
+// NON-BLOCKING (Good - continues execution)
+fs.readFile('file.txt', (err, data) => {
+  console.log(data);  // Called when ready
+});
+console.log('This runs immediately!');
+```
+
+**Why this matters for real-time apps:**
+```
+Blocking Server                    Non-Blocking Server (Node.js)
+                                   
+Request 1 ──────────►              Request 1 ──────────►
+          │ Wait 1s │                        │
+          ▼         │              Request 2 ──────────►
+Request 2 ──────────►                        │
+          │ Wait 1s │              Request 3 ──────────►
+          ▼         │                        │
+Request 3 ──────────►              All processed concurrently!
+                                   
+Total: 3 seconds                   Total: ~1 second
+```
+
+#### Core Concept 3: Modules (CommonJS)
+
+```javascript
+// Importing modules
+const express = require('express');      // Core/npm module
+const myModule = require('./myModule');  // Local module
+
+// Exporting from a module
+module.exports = { function1, function2 };
+// or
+exports.function1 = function1;
+```
+
+#### Core Concept 4: Express.js Basics
+
+```javascript
+const express = require('express');
+const app = express();
+
+// Middleware
+app.use(express.json());         // Parse JSON bodies
+app.use(cors());                 // Enable CORS
+
+// Routes
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
+
+// Start server
+app.listen(5000, () => console.log('Running on port 5000'));
+```
+
+---
+
+### 📓 simple-peer - Core Concepts
+
+simple-peer is a **WebRTC abstraction library** that simplifies peer connections.
+
+#### What is simple-peer?
+
+```
+simple-peer = WebRTC wrapper
+            = 100+ lines of WebRTC code → 15 lines
+```
+
+#### Core Concept 1: Creating a Peer
+
+```javascript
+import Peer from 'simple-peer';
+
+// INITIATOR (caller)
+const peer = new Peer({
+  initiator: true,    // This peer creates the offer
+  trickle: false,     // Gather all ICE candidates before signaling
+  stream: myStream    // Local MediaStream
+});
+
+// RECEIVER (callee)
+const peer = new Peer({
+  initiator: false,   // This peer creates the answer
+  trickle: false,
+  stream: myStream
+});
+```
+
+#### Core Concept 2: Signal Event
+
+```javascript
+// When signaling data is ready (SDP + ICE candidates)
+peer.on('signal', (data) => {
+  // Send this data to the other peer via signaling server
+  socket.emit('signal', { 
+    target: otherUserId, 
+    signalData: data 
+  });
+});
+
+// When receiving signal from other peer
+socket.on('signal', (data) => {
+  peer.signal(data.signalData);  // Process their signal
+});
+```
+
+#### Core Concept 3: Stream Event
+
+```javascript
+// When remote stream is received
+peer.on('stream', (remoteStream) => {
+  // Display in video element
+  remoteVideo.srcObject = remoteStream;
+});
+```
+
+#### Core Concept 4: Trickle vs Non-Trickle
+
+```
+TRICKLE MODE (trickle: true - default)
+══════════════════════════════════════
+Time 0ms:   Create offer (partial)
+Time 50ms:  ICE candidate 1 → Send immediately
+Time 100ms: ICE candidate 2 → Send immediately
+Time 150ms: ICE candidate 3 → Send immediately
+...
+Multiple signaling round-trips, faster initial connection
+
+
+NON-TRICKLE MODE (trickle: false - what we use)
+═══════════════════════════════════════════════
+Time 0ms:   Create offer, start gathering
+Time 300ms: All candidates gathered
+Time 300ms: Send complete offer
+...
+One signaling round-trip, simpler code
+```
+
+---
+
+### 📒 Material-UI - Core Concepts
+
+Material-UI (MUI) is a **React component library** implementing Google's Material Design.
+
+#### What is Material-UI?
+
+```
+Material-UI = Pre-built React components
+            = Google Material Design
+            = Theming + Styling system
+```
+
+#### Core Concept 1: Component Usage
+
+```javascript
+import { Button, TextField, Typography, Grid } from '@material-ui/core';
+import { Phone, PhoneDisabled } from '@material-ui/icons';
+
+// Using components
+<Button 
+  variant="contained"    // 'text', 'outlined', 'contained'
+  color="primary"        // 'primary', 'secondary', 'default'
+  startIcon={<Phone />}  // Icon before text
+  onClick={handleClick}
+>
+  Call
+</Button>
+
+<TextField
+  label="Name"
+  value={name}
+  onChange={(e) => setName(e.target.value)}
+  fullWidth              // 100% width
+/>
+```
+
+#### Core Concept 2: makeStyles (CSS-in-JS)
+
+```javascript
+import { makeStyles } from '@material-ui/core/styles';
+
+// Define styles
+const useStyles = makeStyles((theme) => ({
+  root: {
+    display: 'flex',
+    padding: theme.spacing(2),  // 8px * 2 = 16px
+  },
+  video: {
+    width: '550px',
+    // Responsive breakpoints
+    [theme.breakpoints.down('xs')]: {
+      width: '300px',
+    },
+  },
+}));
+
+// Use in component
+function MyComponent() {
+  const classes = useStyles();
+  return <div className={classes.root}>...</div>;
+}
+```
+
+#### Core Concept 3: Grid System
+
+```javascript
+// 12-column responsive grid
+<Grid container spacing={2}>
+  <Grid item xs={12} md={6}>  {/* Full on mobile, half on desktop */}
+    Left Column
+  </Grid>
+  <Grid item xs={12} md={6}>
+    Right Column
+  </Grid>
+</Grid>
+```
+
+**Breakpoints:**
+| Key | Width | Devices |
+|-----|-------|---------|
+| xs | 0-599px | Mobile |
+| sm | 600-959px | Tablet |
+| md | 960-1279px | Desktop |
+| lg | 1280-1919px | Large desktop |
+| xl | 1920px+ | Extra large |
+
+---
+
+### 🔗 How Technologies Connect
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    TECHNOLOGY RELATIONSHIP                          │
+└─────────────────────────────────────────────────────────────────────┘
+
+                    ┌──────────────────────┐
+                    │      BROWSER         │
+                    └──────────────────────┘
+                              │
+          ┌───────────────────┼───────────────────┐
+          │                   │                   │
+          ▼                   ▼                   ▼
+    ┌───────────┐      ┌───────────┐      ┌───────────┐
+    │   React   │      │  WebRTC   │      │ Socket.io │
+    │           │      │           │      │  Client   │
+    │ • UI      │      │ • P2P     │      │           │
+    │ • State   │◄────►│ • Media   │◄────►│ • Events  │
+    │ • Hooks   │      │ • Streams │      │ • Signals │
+    └───────────┘      └───────────┘      └───────────┘
+          │                   │                   │
+          │             simple-peer               │
+          │            (abstraction)              │
+          │                                       │
+          └───────────────────┬───────────────────┘
+                              │
+                              ▼
+                    ┌──────────────────────┐
+                    │    Material-UI       │
+                    │    (UI Components)   │
+                    └──────────────────────┘
+
+                              │ HTTP / WebSocket
+                              ▼
+
+                    ┌──────────────────────┐
+                    │       SERVER         │
+                    │  ┌────────────────┐  │
+                    │  │    Node.js     │  │
+                    │  │   (Runtime)    │  │
+                    │  └───────┬────────┘  │
+                    │          │           │
+                    │  ┌───────▼────────┐  │
+                    │  │    Express     │  │
+                    │  │  (HTTP Server) │  │
+                    │  └───────┬────────┘  │
+                    │          │           │
+                    │  ┌───────▼────────┐  │
+                    │  │   Socket.io    │  │
+                    │  │   (Signaling)  │  │
+                    │  └────────────────┘  │
+                    └──────────────────────┘
+```
 
 ---
 
